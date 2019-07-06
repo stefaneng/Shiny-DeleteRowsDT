@@ -2,18 +2,12 @@ library(shiny)
 
 ui <- fluidPage(
   titlePanel("Delete rows"),
-
-  sidebarLayout(
-    sidebarPanel(
-        selectInput('datasetSelect',
-                    label = 'Select data',
-                    choices = c("mtcars", "iris", "faithful"))
-    ),
-
-    mainPanel(
-      uiOutput('undoUI'),
-      DT::dataTableOutput("dtable")
-    )
+  mainPanel(
+    selectInput('datasetSelect',
+                label = 'Select data',
+                choices = c("mtcars", "iris", "faithful")),
+    uiOutput('undoUI'),
+    DT::dataTableOutput("dtable")
   )
 )
 
@@ -74,10 +68,6 @@ server <- function(input, output) {
       # Add the delete button column
       deleteButtonColumn(rv$data, 'delete_button')
     )
-
-    output$deleteTable <- DT::renderDataTable(
-      rv$deletedRows
-    )
 }
 
 #' Adds a row at a specified index
@@ -88,7 +78,12 @@ server <- function(input, output) {
 #' @return the data frame with \code{row} added to \code{df} at index \code{i}
 addRowAt <- function(df, row, i) {
   # Slow but easy to understand
-  rbind(df[1:(i - 1), ], row, df[-(1:(i - 1)), ])
+  if (i > 1) {
+    rbind(df[1:(i - 1), ], row, df[-(1:(i - 1)), ])
+  } else {
+    rbind(row, df)
+  }
+
 }
 
 #' A column of delete buttons for each row in the data frame for the first column
@@ -106,10 +101,12 @@ deleteButtonColumn <- function(df, id, ...) {
 
   deleteCol <- unlist(lapply(seq_len(nrow(df)), f))
 
-  # Create a data
+  # Return a data table
   DT::datatable(cbind(delete = deleteCol, df),
+                # Need to disable escaping for html as string to work
                 escape = FALSE,
                 options = list(
+                  # Disable sorting for the delete column
                   columnDefs = list(list(targets = 1, sortable = FALSE))
                 ))
 }
